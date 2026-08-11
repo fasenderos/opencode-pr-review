@@ -234,30 +234,52 @@ async function runOpenCodeTest(workspace, model) {
   core.startGroup("OpenCode diagnostic test");
   core.info(`Workspace: ${workspace}`);
   core.info(`Model: ${model}`);
-  await exec.exec(
-    "opencode",
-    ["--version"],
-    {
-      cwd: workspace
-    }
-  );
+  await exec.exec("opencode", ["--version"], {
+    cwd: workspace
+  });
   const tempWorkspace = "/tmp/opencode-test";
-  await exec.exec(
-    "rm",
-    ["-rf", tempWorkspace]
-  );
-  await exec.exec(
-    "mkdir",
-    ["-p", tempWorkspace]
-  );
+  const cleanHome = "/tmp/opencode-home";
+  await exec.exec("rm", ["-rf", tempWorkspace]);
+  await exec.exec("mkdir", ["-p", tempWorkspace]);
+  await exec.exec("rm", ["-rf", cleanHome]);
+  await exec.exec("mkdir", ["-p", cleanHome]);
   core.info("================================");
-  core.info("TEST 1: OpenCode in empty workspace");
+  core.info("TEST 1: CI=false + clean HOME");
   core.info("================================");
-  let output = "";
+  await runSingleOpenCodeTest({
+    name: "CI=false",
+    workspace: tempWorkspace,
+    home: cleanHome,
+    model,
+    ci: "false"
+  });
+  core.info("================================");
+  core.info("TEST 2: CI=true + clean HOME");
+  core.info("================================");
+  await runSingleOpenCodeTest({
+    name: "CI=true",
+    workspace: tempWorkspace,
+    home: cleanHome,
+    model,
+    ci: "true"
+  });
+  core.info("================================");
+  core.info("All diagnostic tests passed");
+  core.info("================================");
+  core.endGroup();
+}
+async function runSingleOpenCodeTest(options) {
+  core.info(`Running: ${options.name}`);
+  core.info(`HOME=${options.home}`);
+  core.info(`CI=${options.ci}`);
+  core.info(`Workspace=${options.workspace}`);
+  core.info(`Model=${options.model}`);
+  let stdout = "";
+  let stderr = "";
   const exitCode = await exec.exec(
     "timeout",
     [
-      "60s",
+      "20s",
       "opencode",
       "run",
       "--auto",
@@ -267,32 +289,49 @@ async function runOpenCodeTest(workspace, model) {
       "--format",
       "json",
       "--model",
-      model,
+      options.model,
       "Reply with exactly: REVIEW_TEST_OK"
     ],
     {
-      cwd: tempWorkspace,
+      cwd: options.workspace,
       ignoreReturnCode: true,
+      env: {
+        ...process.env,
+        HOME: options.home,
+        XDG_CONFIG_HOME: `${options.home}/.config`,
+        CI: options.ci
+      },
       listeners: {
         stdout: (data) => {
           const text = data.toString();
-          output += text;
+          stdout += text;
           core.info(text.trimEnd());
         },
         stderr: (data) => {
-          core.warning(data.toString().trimEnd());
+          const text = data.toString();
+          stderr += text;
+          core.warning(text.trimEnd());
         }
       }
     }
   );
-  core.info(`OpenCode exit code: ${exitCode}`);
+  core.info(`${options.name} exit code: ${exitCode}`);
   if (exitCode !== 0) {
     throw new Error(
-      `OpenCode diagnostic test failed with exit code ${exitCode}`
+      [
+        `OpenCode test "${options.name}" failed.`,
+        `Exit code: ${exitCode}`,
+        `stdout length: ${stdout.length}`,
+        `stderr length: ${stderr.length}`
+      ].join(" ")
     );
   }
-  core.info("OpenCode diagnostic test passed.");
-  core.endGroup();
+  if (!stdout.includes("REVIEW_TEST_OK")) {
+    throw new Error(
+      `OpenCode test "${options.name}" completed but did not return REVIEW_TEST_OK.`
+    );
+  }
+  core.info(`\u2713 ${options.name}: REVIEW_TEST_OK`);
 }
 
 // src/index.ts
