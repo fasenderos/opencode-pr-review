@@ -75,23 +75,42 @@ export async function runOpenCode(
   );
 
   const exitCode = await exec.exec(
-    "opencode",
-    args,
-    {
-      env,
-      ignoreReturnCode: true,
-      listeners: {
-        stdout: (data: Buffer) => {
-          const text = data.toString();
-          output += text;
-          core.info(text.trimEnd());
-        },
-        stderr: (data: Buffer) => {
-          core.warning(data.toString().trimEnd());
-        },
-      },
-    }
-  );
+  "opencode",
+  ["github", "run"],
+  {
+    cwd: workspace,
+    env: {
+      ...process.env,
+
+      MODEL: "opencode/deepseek-v4-flash-free",
+
+      AGENT: "code-reviewer",
+
+      USE_GITHUB_TOKEN: "true",
+
+      PROMPT: "Reply with exactly: REVIEW_TEST_OK",
+    },
+  }
+);
+
+//   const exitCode = await exec.exec(
+//     "opencode",
+//     args,
+//     {
+//       env,
+//       ignoreReturnCode: true,
+//       listeners: {
+//         stdout: (data: Buffer) => {
+//           const text = data.toString();
+//           output += text;
+//           core.info(text.trimEnd());
+//         },
+//         stderr: (data: Buffer) => {
+//           core.warning(data.toString().trimEnd());
+//         },
+//       },
+//     }
+//   );
 
   return {
     exitCode,

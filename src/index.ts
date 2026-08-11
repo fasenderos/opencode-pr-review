@@ -107,7 +107,7 @@ async function run(): Promise<void> {
     //   workspace
     // );
 
-    await runOpenCodeTest(workspace, "opencode/deepseek-v4-flash-free");
+    // await runOpenCodeTest(workspace, "opencode/deepseek-v4-flash-free");
 
     /*
      * 5. Run OpenCode
