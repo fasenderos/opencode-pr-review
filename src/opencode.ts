@@ -95,6 +95,29 @@ export async function runOpenCode(
 		$schema: "https://opencode.ai/config.json",
 		model,
 		default_agent: agent,
+		permission: {
+			bash: {
+				"git status*": "allow",
+				"git diff*": "allow",
+				"git log*": "allow",
+				"git show*": "allow",
+				"git rev-parse*": "allow",
+				"git ls-files*": "allow",
+				"git grep*": "allow",
+				"grep *": "allow",
+				"find *": "allow",
+				"cat *": "allow",
+				"ls*": "allow",
+				pwd: "allow",
+				"*": "deny",
+			},
+			edit: {
+				"*": "deny",
+			},
+			write: {
+				"*": "deny",
+			},
+		},
 	});
 
 	core.info(`Running OpenCode GitHub review (agent: ${agent})...`);

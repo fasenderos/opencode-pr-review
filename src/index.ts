@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-// import { installOac } from "./oac";
+import { installOac } from "./oac";
 import { installOpenCode, runOpenCode } from "./opencode";
 import { buildReviewPrompt } from "./prompt";
 
@@ -34,9 +34,9 @@ async function run(): Promise<void> {
 		await installOpenCode(opencodeVersion);
 
 		/*
-		 * Install OAC reviewer
+		 * Install OAC
 		 */
-		// await installOac();
+		await installOac();
 
 		/*
 		 * Run OpenCode

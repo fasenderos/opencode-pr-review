@@ -1,37 +1,113 @@
 // src/index.ts
-import * as core2 from "@actions/core";
-import * as exec3 from "@actions/exec";
+import * as core3 from "@actions/core";
 
-// src/opencode.ts
-import { writeFile } from "fs/promises";
-import { join } from "path";
+// src/oac.ts
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
-async function installOpenCode(version) {
-  const packageSpec = version === "latest" ? "opencode-ai@latest" : `opencode-ai@${version}`;
-  core.info(`Installing OpenCode: ${packageSpec}`);
-  await exec.exec("npm", ["install", "--global", packageSpec]);
-  await exec.exec("opencode", ["--version"]);
+async function installOac() {
+  core.info("Installing OpenAgentsControl...");
+  await exec.exec("bash", [
+    "-c",
+    "curl -fsSL https://raw.githubusercontent.com/darrenhinde/OpenAgentsControl/main/install.sh | bash -s developer"
+  ]);
+  core.info("OpenAgentsControl installation completed.");
 }
-async function runOpenCode(workspace, agent, model, prompt, apiKey, githubToken) {
+
+// src/opencode.ts
+import * as core2 from "@actions/core";
+import * as exec3 from "@actions/exec";
+async function installOpenCode(version) {
+  const packageSpec = getOpenCodePackage(version);
+  core2.startGroup(`Installing OpenCode: ${packageSpec}`);
+  try {
+    core2.info(`Package: ${packageSpec}`);
+    core2.info(`Node: ${process.version}`);
+    await exec3.exec("node", ["--version"]);
+    await exec3.exec("npm", ["--version"]);
+    core2.info("Installing OpenCode globally...");
+    await exec3.exec(
+      "npm",
+      ["install", "--global", "--no-fund", "--no-audit", packageSpec],
+      {
+        ignoreReturnCode: false
+      }
+    );
+    core2.info("Verifying OpenCode installation...");
+    let versionOutput = "";
+    const exitCode = await exec3.exec("opencode", ["--version"], {
+      ignoreReturnCode: true,
+      listeners: {
+        stdout: (data) => {
+          versionOutput += data.toString();
+        },
+        stderr: (data) => {
+          core2.warning(data.toString().trimEnd());
+        }
+      }
+    });
+    if (exitCode !== 0) {
+      throw new Error(
+        `OpenCode was installed but "opencode --version" failed with exit code ${exitCode}.`
+      );
+    }
+    const installedVersion = versionOutput.trim();
+    if (!installedVersion) {
+      throw new Error(
+        'OpenCode was installed but "opencode --version" returned no output.'
+      );
+    }
+    core2.info(`OpenCode installed successfully: ${installedVersion}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(
+        `Failed to install OpenCode (${packageSpec}): ${error.message}`,
+        { cause: error }
+      );
+    }
+    throw new Error(`Failed to install OpenCode (${packageSpec}).`);
+  } finally {
+    core2.endGroup();
+  }
+}
+async function runOpenCode(workspace, agent, model, prompt, _apiKey, githubToken) {
   let output = "";
   const env = {
     ...process.env,
     GITHUB_TOKEN: githubToken,
     USE_GITHUB_TOKEN: "true",
-    PROMPT: prompt
+    PROMPT: prompt,
+    MODEL: model
   };
-  if (model) {
-    env.MODEL = model;
-  }
-  if (agent) {
-    env.AGENT = agent;
-  }
-  if (apiKey) {
-    env.OPENAI_API_KEY = apiKey;
-  }
-  core.info(`Running OpenCode GitHub review (agent: ${agent})...`);
-  const exitCode = await exec.exec("opencode", ["github", "run"], {
+  env.OPENCODE_CONFIG_CONTENT = JSON.stringify({
+    $schema: "https://opencode.ai/config.json",
+    model,
+    default_agent: agent,
+    permission: {
+      bash: {
+        "git status*": "allow",
+        "git diff*": "allow",
+        "git log*": "allow",
+        "git show*": "allow",
+        "git rev-parse*": "allow",
+        "git ls-files*": "allow",
+        "git grep*": "allow",
+        "grep *": "allow",
+        "find *": "allow",
+        "cat *": "allow",
+        "ls*": "allow",
+        pwd: "allow",
+        "*": "deny"
+      },
+      edit: {
+        "*": "deny"
+      },
+      write: {
+        "*": "deny"
+      }
+    }
+  });
+  core2.info(`Running OpenCode GitHub review (agent: ${agent})...`);
+  const exitCode = await exec3.exec("opencode", ["github", "run"], {
     cwd: workspace,
     env,
     ignoreReturnCode: true,
@@ -39,12 +115,12 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey, githubToken)
       stdout: (data) => {
         const text = data.toString();
         output += text;
-        core.info(text.trimEnd());
+        core2.info(text.trimEnd());
       },
       stderr: (data) => {
         const text = data.toString();
         output += text;
-        core.warning(text.trimEnd());
+        core2.warning(text.trimEnd());
       }
     }
   });
@@ -52,6 +128,18 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey, githubToken)
     exitCode,
     output
   };
+}
+function getOpenCodePackage(version) {
+  const normalized = version.trim();
+  if (!normalized || normalized === "latest") {
+    return "opencode-ai@latest";
+  }
+  if (!/^[0-9]+(?:\.[0-9]+){0,2}(?:-[0-9A-Za-z.-]+)?$/.test(normalized)) {
+    throw new Error(
+      `Invalid OpenCode version: "${version}". Expected "latest" or a valid npm version.`
+    );
+  }
+  return `opencode-ai@${normalized}`;
 }
 
 // src/prompt.ts
@@ -85,20 +173,19 @@ async function run() {
     if (!workspace) {
       throw new Error("GITHUB_WORKSPACE is not available.");
     }
-    const githubToken = core2.getInput("github_token", { required: true });
-    const model = core2.getInput("model");
-    const apiKey = core2.getInput("api_key") || void 0;
-    const agent = core2.getInput("agent");
-    const opencodeVersion = core2.getInput("opencode_version");
-    core2.info("================================");
-    core2.info("OpenCode PR Review");
-    core2.info("================================");
-    core2.info(`Agent: ${agent}`);
-    core2.info(`Model: ${model ?? "OpenCode default"}`);
-    core2.info(`API key provided: ${apiKey ? "yes" : "no"}`);
+    const githubToken = core3.getInput("github_token", { required: true });
+    const model = core3.getInput("model");
+    const apiKey = core3.getInput("api_key") || void 0;
+    const agent = core3.getInput("agent");
+    const opencodeVersion = core3.getInput("opencode_version");
+    core3.info("================================");
+    core3.info("OpenCode PR Review");
+    core3.info("================================");
+    core3.info(`Agent: ${agent}`);
+    core3.info(`Model: ${model ?? "OpenCode default"}`);
+    core3.info(`API key provided: ${apiKey ? "yes" : "no"}`);
     await installOpenCode(opencodeVersion);
-    await exec3.exec("git", ["reset", "--hard", "HEAD"], { cwd: workspace });
-    await exec3.exec("git", ["clean", "-fd"], { cwd: workspace });
+    await installOac();
     const prompt = buildReviewPrompt();
     const result = await runOpenCode(
       workspace,
@@ -108,19 +195,19 @@ async function run() {
       apiKey,
       githubToken
     );
-    core2.info(`OpenCode exit code: ${result.exitCode}`);
+    core3.info(`OpenCode exit code: ${result.exitCode}`);
     if (result.exitCode !== 0) {
       throw new Error(`OpenCode exited with code ${result.exitCode}.`);
     }
-    core2.info("================================");
-    core2.info("OpenCode PR Review completed successfully.");
-    core2.info("The review comment was handled by OpenCode.");
-    core2.info("================================");
+    core3.info("================================");
+    core3.info("OpenCode PR Review completed successfully.");
+    core3.info("The review comment was handled by OpenCode.");
+    core3.info("================================");
   } catch (error) {
     if (error instanceof Error) {
-      core2.setFailed(error.message);
+      core3.setFailed(error.message);
     } else {
-      core2.setFailed("Unknown error.");
+      core3.setFailed("Unknown error.");
     }
   }
 }
