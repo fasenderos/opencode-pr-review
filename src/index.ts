@@ -1,8 +1,7 @@
 import * as core from "@actions/core";
-import * as exec from "@actions/exec";
 
-import { installOac } from "./oac";
-import { configureOpenCode, installOpenCode, runOpenCode } from "./opencode";
+// import { installOac } from "./oac";
+import { installOpenCode, runOpenCode } from "./opencode";
 import { buildReviewPrompt } from "./prompt";
 
 async function run(): Promise<void> {
@@ -33,22 +32,11 @@ async function run(): Promise<void> {
 		 * Install OpenCode
 		 */
 		await installOpenCode(opencodeVersion);
-		// await configureOpenCode(workspace, model, agent);
 
 		/*
 		 * Install OAC reviewer
 		 */
 		// await installOac();
-
-		/*
-		 * Ensure working tree is clean
-		 *
-		 * OpenCode github run automatically commits and pushes
-		 * if the repository is dirty. We only want a review comment.
-		 */
-		await exec.exec("git", ["reset", "--hard", "HEAD"], { cwd: workspace });
-
-		await exec.exec("git", ["clean", "-fd"], { cwd: workspace });
 
 		/*
 		 * Run OpenCode
