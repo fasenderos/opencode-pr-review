@@ -13,6 +13,7 @@ import {
 import {
   installOpenCode,
   runOpenCode,
+  runOpenCodeTest
 } from "./opencode";
 
 import {
@@ -105,6 +106,8 @@ async function run(): Promise<void> {
     //   oacRef,
     //   workspace
     // );
+
+    await runOpenCodeTest(workspace, "opencode/deepseek-v4-flash-free");
 
     /*
      * 5. Run OpenCode

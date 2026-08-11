@@ -193,6 +193,9 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
     "--format",
     "json"
   ];
+  if (model && model !== "free") {
+    args.push("--model", model);
+  }
   args.push(`"${prompt}"`);
   let output = "";
   const env = {
@@ -226,6 +229,70 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
     exitCode,
     output
   };
+}
+async function runOpenCodeTest(workspace, model) {
+  core.startGroup("OpenCode diagnostic test");
+  core.info(`Workspace: ${workspace}`);
+  core.info(`Model: ${model}`);
+  await exec.exec(
+    "opencode",
+    ["--version"],
+    {
+      cwd: workspace
+    }
+  );
+  const tempWorkspace = "/tmp/opencode-test";
+  await exec.exec(
+    "rm",
+    ["-rf", tempWorkspace]
+  );
+  await exec.exec(
+    "mkdir",
+    ["-p", tempWorkspace]
+  );
+  core.info("================================");
+  core.info("TEST 1: OpenCode in empty workspace");
+  core.info("================================");
+  let output = "";
+  const exitCode = await exec.exec(
+    "timeout",
+    [
+      "60s",
+      "opencode",
+      "run",
+      "--auto",
+      "--print-logs",
+      "--log-level",
+      "DEBUG",
+      "--format",
+      "json",
+      "--model",
+      model,
+      "Reply with exactly: REVIEW_TEST_OK"
+    ],
+    {
+      cwd: tempWorkspace,
+      ignoreReturnCode: true,
+      listeners: {
+        stdout: (data) => {
+          const text = data.toString();
+          output += text;
+          core.info(text.trimEnd());
+        },
+        stderr: (data) => {
+          core.warning(data.toString().trimEnd());
+        }
+      }
+    }
+  );
+  core.info(`OpenCode exit code: ${exitCode}`);
+  if (exitCode !== 0) {
+    throw new Error(
+      `OpenCode diagnostic test failed with exit code ${exitCode}`
+    );
+  }
+  core.info("OpenCode diagnostic test passed.");
+  core.endGroup();
 }
 
 // src/index.ts
@@ -271,6 +338,7 @@ async function run() {
     await installOpenCode(
       opencodeVersion
     );
+    await runOpenCodeTest(workspace, "opencode/deepseek-v4-flash-free");
     const prompt = buildReviewPrompt();
     const result = await runOpenCode(
       workspace,
