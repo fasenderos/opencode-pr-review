@@ -1,5 +1,5 @@
 // src/index.ts
-import * as core3 from "@actions/core";
+import * as core2 from "@actions/core";
 
 // src/github.ts
 import * as github from "@actions/github";
@@ -228,23 +228,6 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
   };
 }
 
-// src/oac.ts
-import * as core2 from "@actions/core";
-import * as exec3 from "@actions/exec";
-async function installOac(ref, workspace) {
-  core2.info("Installing OpenAgentsControl...");
-  await exec3.exec(
-    "bash",
-    [
-      "-c",
-      "curl -fsSL https://raw.githubusercontent.com/darrenhinde/OpenAgentsControl/main/install.sh | bash -s developer"
-    ]
-  );
-  core2.info(
-    "OpenAgentsControl installation completed."
-  );
-}
-
 // src/index.ts
 async function run() {
   try {
@@ -254,43 +237,39 @@ async function run() {
         "GITHUB_WORKSPACE is not available."
       );
     }
-    const githubToken = core3.getInput(
+    const githubToken = core2.getInput(
       "github_token",
       { required: true }
     );
-    const model = core3.getInput("model") || void 0;
-    const apiKey = core3.getInput("api_key") || void 0;
-    const agent = core3.getInput("agent") || "code-reviewer";
-    const opencodeVersion = core3.getInput("opencode_version") || "latest";
-    const oacRef = core3.getInput("oac_ref") || "main";
-    core3.info("================================");
-    core3.info("OpenCode PR Review");
-    core3.info("================================");
-    core3.info(
+    const model = core2.getInput("model") || void 0;
+    const apiKey = core2.getInput("api_key") || void 0;
+    const agent = core2.getInput("agent") || "code-reviewer";
+    const opencodeVersion = core2.getInput("opencode_version") || "latest";
+    const oacRef = core2.getInput("oac_ref") || "main";
+    core2.info("================================");
+    core2.info("OpenCode PR Review");
+    core2.info("================================");
+    core2.info(
       `Agent: ${agent}`
     );
-    core3.info(
+    core2.info(
       `Model: ${model ?? "OpenCode default"}`
     );
-    core3.info(
+    core2.info(
       `API key provided: ${apiKey ? "yes" : "no"}`
     );
     const files = await getPullRequestFiles(
       githubToken
     );
-    core3.info(
+    core2.info(
       `Changed files: ${files.length}`
     );
     const reviewInput = buildReviewInput(files);
-    core3.info(
+    core2.info(
       `Reviewable files: ${reviewInput.files.length}`
     );
     await installOpenCode(
       opencodeVersion
-    );
-    await installOac(
-      oacRef,
-      workspace
     );
     const prompt = buildReviewPrompt();
     const result = await runOpenCode(
@@ -300,7 +279,7 @@ async function run() {
       "Reply with exactly: REVIEW_TEST_OK",
       apiKey
     );
-    core3.info(
+    core2.info(
       `OpenCode exit code: ${result.exitCode}`
     );
     if (result.exitCode !== 0) {
@@ -312,37 +291,37 @@ async function run() {
       result.output
     );
     const reviewResult = parseReviewOutput(review);
-    core3.info(
+    core2.info(
       `Issues found: ${reviewResult.issues.length}`
     );
-    core3.info(
+    core2.info(
       "--- Review Summary ---"
     );
-    core3.info(
+    core2.info(
       reviewResult.summary
     );
     for (const issue of reviewResult.issues) {
-      core3.info(
+      core2.info(
         `[${issue.severity}] ${issue.file}:${issue.line} - ${issue.title}`
       );
     }
-    core3.setOutput(
+    core2.setOutput(
       "changed_files",
       files.length
     );
-    core3.setOutput(
+    core2.setOutput(
       "reviewable_files",
       reviewInput.files.length
     );
-    core3.setOutput(
+    core2.setOutput(
       "review",
       JSON.stringify(reviewResult)
     );
   } catch (error) {
     if (error instanceof Error) {
-      core3.setFailed(error.message);
+      core2.setFailed(error.message);
     } else {
-      core3.setFailed(
+      core2.setFailed(
         "Unknown error."
       );
     }

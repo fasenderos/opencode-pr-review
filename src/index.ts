@@ -101,10 +101,10 @@ async function run(): Promise<void> {
     /*
      * 4. Install OAC reviewer
      */
-    await installOac(
-      oacRef,
-      workspace
-    );
+    // await installOac(
+    //   oacRef,
+    //   workspace
+    // );
 
     /*
      * 5. Run OpenCode
