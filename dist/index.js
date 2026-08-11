@@ -236,80 +236,17 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
 // src/oac.ts
 import * as core2 from "@actions/core";
 import * as exec3 from "@actions/exec";
-async function installOac(ref, workspace) {
-  const oacDirectory = `${workspace}/.oac`;
-  const agentsDirectory = `${workspace}/.opencode/agents`;
-  core2.info(
-    `Installing OpenAgentsControl (${ref})...`
-  );
+async function installOac() {
+  core2.info("Installing OpenAgentsControl...");
   await exec3.exec(
-    "git",
+    "bash",
     [
-      "clone",
-      "--depth",
-      "1",
-      "--branch",
-      ref,
-      "https://github.com/darrenhinde/OpenAgentsControl.git",
-      oacDirectory
-    ],
-    {
-      cwd: workspace
-    }
-  );
-  core2.info(
-    "OpenAgentsControl repository downloaded."
-  );
-  await exec3.exec(
-    "mkdir",
-    ["-p", agentsDirectory]
-  );
-  const reviewerPath = `${oacDirectory}/.opencode/agent/subagents/code/reviewer.md`;
-  core2.info(
-    `Using OAC OpenCode reviewer: ${reviewerPath}`
-  );
-  await exec3.exec(
-    "test",
-    ["-f", reviewerPath]
-  );
-  await exec3.exec(
-    "cp",
-    [
-      reviewerPath,
-      `${agentsDirectory}/code-reviewer.md`
+      "-c",
+      "curl -fsSL https://raw.githubusercontent.com/darrenhinde/OpenAgentsControl/main/install.sh | bash -s developer"
     ]
   );
   core2.info(
-    "OpenAgentsControl code-reviewer installed."
-  );
-  await configureReviewPermissions(workspace);
-}
-async function configureReviewPermissions(workspace) {
-  const configPath = `${workspace}/.opencode/opencode.json`;
-  const config = {
-    "$schema": "https://opencode.ai/config.json",
-    "permission": {
-      "edit": "deny",
-      "webfetch": "deny",
-      "question": "deny",
-      "task": "deny",
-      "bash": {
-        "*": "deny",
-        "git status*": "allow",
-        "git diff*": "allow",
-        "git log*": "allow",
-        "git show*": "allow"
-      }
-    }
-  };
-  const fs = await import("fs/promises");
-  await fs.writeFile(
-    configPath,
-    JSON.stringify(config, null, 2),
-    "utf8"
-  );
-  core2.info(
-    "OpenCode review permissions configured."
+    "OpenAgentsControl installation completed."
   );
 }
 
