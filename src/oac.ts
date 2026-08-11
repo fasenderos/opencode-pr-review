@@ -5,6 +5,9 @@ export async function installOac(
   ref: string,
   workspace: string
 ): Promise<void> {
+  const oacDirectory = `${workspace}/.oac`;
+  const agentsDirectory = `${workspace}/.opencode/agents`;
+
   core.info(
     `Installing OpenAgentsControl (${ref})...`
   );
@@ -18,98 +21,86 @@ export async function installOac(
       "--branch",
       ref,
       "https://github.com/darrenhinde/OpenAgentsControl.git",
-      `${workspace}/.oac`,
+      oacDirectory,
     ],
     {
       cwd: workspace,
     }
   );
 
-  core.info("OpenAgentsControl repository downloaded.");
-
-  await installCodeReviewerAgent(workspace);
-}
-
-async function installCodeReviewerAgent(
-  workspace: string
-): Promise<void> {
-  /*
-   * OAC can evolve its directory layout.
-   *
-   * We intentionally keep this logic isolated here so changes
-   * in OAC do not leak into the rest of the Action.
-   *
-   * For the first version, we locate the reviewer agent and
-   * copy it into the project-local OpenCode agent directory.
-   */
-
-  const targetDirectory =
-    `${workspace}/.opencode/agents`;
+  core.info(
+    "OpenAgentsControl repository downloaded."
+  );
 
   await exec.exec(
     "mkdir",
-    ["-p", targetDirectory]
+    ["-p", agentsDirectory]
   );
 
-  const output: string[] = [];
-
-  await exec.exec(
-    "find",
-    [
-      `${workspace}/.oac`,
-      "-type",
-      "f",
-      "-iname",
-      "*reviewer*.md",
-    ],
-    {
-      listeners: {
-        stdout: (data: Buffer) => {
-          output.push(data.toString());
-        },
-      },
-    }
-  );
-
-  const candidates = output
-    .join("")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (candidates.length === 0) {
-    throw new Error(
-      "Could not find a reviewer agent in OpenAgentsControl."
-    );
-  }
-
-  const reviewer =
-    candidates.find((file) =>
-      file.toLowerCase().includes("code-reviewer")
-    ) ??
-    candidates.find((file) =>
-      file.toLowerCase().includes("reviewer")
-    );
-
-  if (!reviewer) {
-    throw new Error(
-      "Could not identify the OpenAgentsControl code reviewer agent."
-    );
-  }
+  /*
+   * OAC contains several "code reviewer" agents for
+   * different integrations. We specifically want the
+   * native OpenCode agent.
+   */
+  const reviewerPath =
+    `${oacDirectory}/.opencode/agent/subagents/code/reviewer.md`;
 
   core.info(
-    `Using OAC reviewer agent: ${reviewer}`
+    `Using OAC OpenCode reviewer: ${reviewerPath}`
+  );
+
+  await exec.exec(
+    "test",
+    ["-f", reviewerPath]
   );
 
   await exec.exec(
     "cp",
     [
-      reviewer,
-      `${targetDirectory}/code-reviewer.md`,
+      reviewerPath,
+      `${agentsDirectory}/code-reviewer.md`,
     ]
   );
 
   core.info(
     "OpenAgentsControl code-reviewer installed."
+  );
+
+  await configureReviewPermissions(workspace);
+}
+
+async function configureReviewPermissions(
+  workspace: string
+): Promise<void> {
+  const configPath =
+    `${workspace}/.opencode/opencode.json`;
+
+  const config = {
+    "$schema": "https://opencode.ai/config.json",
+    "permission": {
+      "edit": "deny",
+      "webfetch": "deny",
+      "question": "deny",
+      "task": "deny",
+      "bash": {
+        "*": "deny",
+        "git status*": "allow",
+        "git diff*": "allow",
+        "git log*": "allow",
+        "git show*": "allow"
+      }
+    }
+  };
+
+  const fs = await import("node:fs/promises");
+
+  await fs.writeFile(
+    configPath,
+    JSON.stringify(config, null, 2),
+    "utf8"
+  );
+
+  core.info(
+    "OpenCode review permissions configured."
   );
 }

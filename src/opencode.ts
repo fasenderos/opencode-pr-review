@@ -1,8 +1,6 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 
-import { ReviewInput } from "./types";
-
 export interface OpenCodeRunResult {
   exitCode: number;
   output: string;
@@ -38,10 +36,9 @@ export async function runOpenCode(
   workspace: string,
   agent: string,
   model: string | undefined,
-  input: ReviewInput,
   apiKey: string | undefined
 ): Promise<OpenCodeRunResult> {
-  const prompt = buildReviewPrompt(input);
+  const prompt = buildReviewPrompt();
 
   const args = [
     "run",
@@ -103,58 +100,39 @@ export async function runOpenCode(
   };
 }
 
-function buildReviewPrompt(
-  input: ReviewInput
-): string {
-  const files = input.files
-    .map(
-      (file) => `
-FILE: ${file.filename}
-STATUS: ${file.status}
-ADDITIONS: ${file.additions}
-DELETIONS: ${file.deletions}
-
-PATCH:
-${file.patch}
-`
-    )
-    .join("\n==============================\n");
-
+function buildReviewPrompt(): string {
   return `
-You are reviewing a GitHub pull request.
+Review the current GitHub pull request.
 
-The repository is checked out in your current working directory.
+The repository is already checked out in the current working directory.
 
-Review the pull request changes carefully.
+Use git diff, git status, git log and the repository files to understand
+the changes and their context.
 
-Use the repository files for context when necessary.
+Review ONLY issues introduced by the pull request.
 
-Do not modify any files.
-Do not create commits.
-Do not change the working tree.
-
-Focus only on real, actionable issues introduced by the pull request.
+Do NOT modify any files.
+Do NOT create commits.
+Do NOT change the working tree.
 
 Look for:
 - correctness bugs
 - security vulnerabilities
+- regressions
 - broken edge cases
 - incorrect error handling
-- regressions
 - performance problems
 - API compatibility problems
-- missing tests when the change clearly requires them
+- missing tests when clearly required
 
-Avoid:
+Do NOT report:
+- formatting
 - subjective style preferences
-- formatting issues
 - naming preferences
-- unrelated pre-existing problems
-- speculative concerns without evidence
+- unrelated pre-existing issues
+- speculative problems without evidence
 
-Return ONLY valid JSON.
-
-The JSON must have exactly this structure:
+Return ONLY valid JSON with exactly this structure:
 
 {
   "summary": "short summary of the review",
@@ -170,15 +148,11 @@ The JSON must have exactly this structure:
   ]
 }
 
-If there are no actionable issues, return:
+If there are no actionable issues:
 
 {
   "summary": "No actionable issues found.",
   "issues": []
 }
-
-The following files are part of the pull request:
-
-${files}
 `;
 }

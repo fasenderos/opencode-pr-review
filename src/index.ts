@@ -113,7 +113,6 @@ async function run(): Promise<void> {
         workspace,
         agent,
         model,
-        reviewInput,
         apiKey
       );
 
