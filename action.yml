@@ -1,0 +1,22 @@
+name: "OpenCode PR Review"
+description: "Review pull requests using OpenCode"
+author: "Your Name"
+
+inputs:
+  model:
+    description: "Model to use for the review"
+    required: false
+    default: "free"
+
+  api_key:
+    description: "API key for private model providers"
+    required: false
+
+  github_token:
+    description: "GitHub token used to publish the review"
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: "node24"
+  main: "dist/index.js"
