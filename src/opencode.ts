@@ -39,18 +39,32 @@ export async function runOpenCode(
   prompt: string,
   apiKey: string | undefined
 ): Promise<OpenCodeRunResult> {
-  const args = [
-    "run",
-    "--auto",
-    "--agent",
-    agent,
-    "--format",
-    "json",
-  ];
+    await exec.exec(
+        "find",
+        [".opencode", "-type", "f", "-maxdepth", "5"],
+        {
+        cwd: workspace,
+        }
+    );
 
-  if (model) {
-    args.push("--model", model);
-  }
+    await exec.exec(
+        "opencode",
+        ["agent", "list"],
+        {
+            cwd: workspace,
+        }
+    );
+
+  const args = [
+  "run",
+  "--auto",
+  "--format",
+  "json",
+];
+
+//   if (model) {
+//     args.push("--model", model);
+//   }
 
   args.push(`"${prompt}"`);
 

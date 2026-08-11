@@ -187,17 +187,26 @@ async function installOpenCode(version) {
   ]);
 }
 async function runOpenCode(workspace, agent, model, prompt, apiKey) {
+  await exec.exec(
+    "find",
+    [".opencode", "-type", "f", "-maxdepth", "5"],
+    {
+      cwd: workspace
+    }
+  );
+  await exec.exec(
+    "opencode",
+    ["agent", "list"],
+    {
+      cwd: workspace
+    }
+  );
   const args = [
     "run",
     "--auto",
-    "--agent",
-    agent,
     "--format",
     "json"
   ];
-  if (model) {
-    args.push("--model", model);
-  }
   args.push(`"${prompt}"`);
   let output = "";
   const env = {
@@ -236,7 +245,7 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
 // src/oac.ts
 import * as core2 from "@actions/core";
 import * as exec3 from "@actions/exec";
-async function installOac() {
+async function installOac(ref, workspace) {
   core2.info("Installing OpenAgentsControl...");
   await exec3.exec(
     "bash",
@@ -247,6 +256,35 @@ async function installOac() {
   );
   core2.info(
     "OpenAgentsControl installation completed."
+  );
+  await configureReviewPermissions(workspace);
+}
+async function configureReviewPermissions(workspace) {
+  const configPath = `${workspace}/.opencode/opencode.json`;
+  const config = {
+    "$schema": "https://opencode.ai/config.json",
+    "permission": {
+      "edit": "deny",
+      "webfetch": "deny",
+      "question": "deny",
+      "task": "deny",
+      "bash": {
+        "*": "deny",
+        "git status*": "allow",
+        "git diff*": "allow",
+        "git log*": "allow",
+        "git show*": "allow"
+      }
+    }
+  };
+  const fs = await import("fs/promises");
+  await fs.writeFile(
+    configPath,
+    JSON.stringify(config, null, 2),
+    "utf8"
+  );
+  core2.info(
+    "OpenCode review permissions configured."
   );
 }
 

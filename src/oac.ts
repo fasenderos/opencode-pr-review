@@ -1,7 +1,10 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 
-export async function installOac(): Promise<void> {
+export async function installOac(
+    ref: string,
+    workspace: string
+): Promise<void> {
   core.info("Installing OpenAgentsControl...");
 
   await exec.exec(
@@ -15,6 +18,8 @@ export async function installOac(): Promise<void> {
   core.info(
     "OpenAgentsControl installation completed."
   );
+
+  await configureReviewPermissions(workspace);
 }
 
 // export async function installOac(
