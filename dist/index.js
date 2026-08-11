@@ -187,27 +187,6 @@ async function installOpenCode(version) {
   ]);
 }
 async function runOpenCode(workspace, agent, model, prompt, apiKey) {
-  await exec.exec(
-    "pwd",
-    [],
-    {
-      cwd: workspace
-    }
-  );
-  await exec.exec(
-    "ls",
-    ["-la", ".opencode"],
-    {
-      cwd: workspace
-    }
-  );
-  await exec.exec(
-    "cat",
-    [".opencode/opencode.json"],
-    {
-      cwd: workspace
-    }
-  );
   const args = [
     "run",
     "--auto",
