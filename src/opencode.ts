@@ -76,7 +76,7 @@ export async function installOpenCode(version: string): Promise<void> {
 export async function runOpenCode(
 	workspace: string,
 	agent: string,
-	model: string | undefined,
+	model: string,
 	prompt: string,
 	_apiKey: string | undefined,
 	githubToken: string,
@@ -88,6 +88,7 @@ export async function runOpenCode(
 		GITHUB_TOKEN: githubToken,
 		USE_GITHUB_TOKEN: "true",
 		PROMPT: prompt,
+		MODEL: model,
 	};
 
 	env.OPENCODE_CONFIG_CONTENT = JSON.stringify({
