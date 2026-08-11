@@ -22,6 +22,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Build action
+        run: |
+          npm ci
+          npm run build
+
       - name: Run OpenCode PR Review
         uses: ./
         with:
