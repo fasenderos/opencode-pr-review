@@ -19,7 +19,7 @@ export async function installOac(
     "OpenAgentsControl installation completed."
   );
 
-  await configureReviewPermissions(workspace);
+//   await configureReviewPermissions(workspace);
 }
 
 // export async function installOac(

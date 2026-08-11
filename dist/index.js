@@ -188,15 +188,22 @@ async function installOpenCode(version) {
 }
 async function runOpenCode(workspace, agent, model, prompt, apiKey) {
   await exec.exec(
-    "find",
-    [".opencode", "-type", "f", "-maxdepth", "5"],
+    "pwd",
+    [],
     {
       cwd: workspace
     }
   );
   await exec.exec(
-    "opencode",
-    ["agent", "list"],
+    "ls",
+    ["-la", ".opencode"],
+    {
+      cwd: workspace
+    }
+  );
+  await exec.exec(
+    "cat",
+    [".opencode/opencode.json"],
     {
       cwd: workspace
     }
@@ -256,35 +263,6 @@ async function installOac(ref, workspace) {
   );
   core2.info(
     "OpenAgentsControl installation completed."
-  );
-  await configureReviewPermissions(workspace);
-}
-async function configureReviewPermissions(workspace) {
-  const configPath = `${workspace}/.opencode/opencode.json`;
-  const config = {
-    "$schema": "https://opencode.ai/config.json",
-    "permission": {
-      "edit": "deny",
-      "webfetch": "deny",
-      "question": "deny",
-      "task": "deny",
-      "bash": {
-        "*": "deny",
-        "git status*": "allow",
-        "git diff*": "allow",
-        "git log*": "allow",
-        "git show*": "allow"
-      }
-    }
-  };
-  const fs = await import("fs/promises");
-  await fs.writeFile(
-    configPath,
-    JSON.stringify(config, null, 2),
-    "utf8"
-  );
-  core2.info(
-    "OpenCode review permissions configured."
   );
 }
 

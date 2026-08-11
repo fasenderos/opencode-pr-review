@@ -40,20 +40,28 @@ export async function runOpenCode(
   apiKey: string | undefined
 ): Promise<OpenCodeRunResult> {
     await exec.exec(
-        "find",
-        [".opencode", "-type", "f", "-maxdepth", "5"],
-        {
-        cwd: workspace,
-        }
-    );
+  "pwd",
+  [],
+  {
+    cwd: workspace,
+  }
+);
 
-    await exec.exec(
-        "opencode",
-        ["agent", "list"],
-        {
-            cwd: workspace,
-        }
-    );
+await exec.exec(
+  "ls",
+  ["-la", ".opencode"],
+  {
+    cwd: workspace,
+  }
+);
+
+await exec.exec(
+  "cat",
+  [".opencode/opencode.json"],
+  {
+    cwd: workspace,
+  }
+);
 
   const args = [
   "run",
@@ -98,9 +106,7 @@ export async function runOpenCode(
       listeners: {
         stdout: (data: Buffer) => {
           const text = data.toString();
-
           output += text;
-
           core.info(text.trimEnd());
         },
         stderr: (data: Buffer) => {
