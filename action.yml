@@ -17,6 +17,10 @@ inputs:
     required: false
     default: ${{ github.token }}
 
+outputs:
+  changed_files:
+    description: "Number of changed files analyzed"
+
 runs:
   using: "node24"
   main: "dist/index.js"

@@ -1,26 +1,25 @@
 import * as core from "@actions/core";
-import * as github from "@actions/github";
+import { getPullRequestFiles, buildReviewInput } from "./github.js";
 
 async function run() {
   try {
     const model = core.getInput("model") || "free";
     const apiKey = core.getInput("api_key");
-    console.log('TEST')
+    const githubToken = core.getInput("github_token");
+
     core.info(`Model: ${model}`);
     core.info(`API key provided: ${apiKey ? "yes" : "no"}`);
 
-    const context = github.context;
+    const files = await getPullRequestFiles(githubToken);
 
-    core.info(`Event: ${context.eventName}`);
-    core.info(`Repository: ${context.repo.owner}/${context.repo.repo}`);
+    core.info(`Changed files: ${files.length}`);
 
-    if (context.payload.pull_request) {
-      core.info(`PR #${context.payload.pull_request.number}`);
-      core.info(`Base: ${context.payload.pull_request.base.ref}`);
-      core.info(`Head: ${context.payload.pull_request.head.ref}`);
-    } else {
-      core.warning("This action was not triggered by a pull request.");
-    }
+    const reviewInput = buildReviewInput(files);
+
+    core.info("--- Review Input Preview ---");
+    core.info(reviewInput.substring(0, 1000));
+
+    core.setOutput("changed_files", String(files.length));
   } catch (error) {
     core.setFailed(error instanceof Error ? error.message : String(error));
   }
