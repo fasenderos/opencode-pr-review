@@ -25,67 +25,46 @@ export async function runOpenCode(
 	apiKey: string | undefined,
 	githubToken: string,
 ): Promise<OpenCodeRunResult> {
-	const args = ["run", "--auto", "--format", "json"];
+	let output = "";
 
-	if (model && model !== "free") {
-		args.push("--model", model);
-	}
-
-	args.push(`"${prompt}"`);
-
-	const output = "";
-
-	const env = {
-		...(process.env as Record<string, string>),
+	const env: Record<string, string> = {
+		...process.env,
+		GITHUB_TOKEN: githubToken,
+		USE_GITHUB_TOKEN: "true",
+		PROMPT: prompt,
 	};
 
-	/*
-	 * We intentionally expose the key through the process
-	 * environment rather than passing it as a CLI argument.
-	 *
-	 * For now we support the common OpenAI environment variable.
-	 * Provider-specific credential handling can be added later.
-	 */
+	if (model) {
+		env.MODEL = model;
+	}
+
+	if (agent) {
+		env.AGENT = agent;
+	}
+
 	if (apiKey) {
 		env.OPENAI_API_KEY = apiKey;
 	}
 
-	core.info(`Running OpenCode with agent "${agent}"...`);
+	core.info(`Running OpenCode GitHub review (agent: ${agent})...`);
 
 	const exitCode = await exec.exec("opencode", ["github", "run"], {
 		cwd: workspace,
-		env: {
-			...process.env,
-			GITHUB_TOKEN: githubToken,
-
-			MODEL: "opencode/deepseek-v4-flash-free",
-
-			AGENT: "code-reviewer",
-
-			USE_GITHUB_TOKEN: "true",
-
-			PROMPT: prompt,
+		env,
+		ignoreReturnCode: true,
+		listeners: {
+			stdout: (data: Buffer) => {
+				const text = data.toString();
+				output += text;
+				core.info(text.trimEnd());
+			},
+			stderr: (data: Buffer) => {
+				const text = data.toString();
+				output += text;
+				core.warning(text.trimEnd());
+			},
 		},
 	});
-
-	//   const exitCode = await exec.exec(
-	//     "opencode",
-	//     args,
-	//     {
-	//       env,
-	//       ignoreReturnCode: true,
-	//       listeners: {
-	//         stdout: (data: Buffer) => {
-	//           const text = data.toString();
-	//           output += text;
-	//           core.info(text.trimEnd());
-	//         },
-	//         stderr: (data: Buffer) => {
-	//           core.warning(data.toString().trimEnd());
-	//         },
-	//       },
-	//     }
-	//   );
 
 	return {
 		exitCode,

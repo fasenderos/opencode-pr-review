@@ -2,41 +2,6 @@
 import * as core3 from "@actions/core";
 import * as exec5 from "@actions/exec";
 
-// src/github.ts
-import * as github from "@actions/github";
-async function getPullRequestFiles(token) {
-  const context2 = getPullRequestContext();
-  const octokit = github.getOctokit(token);
-  const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
-    owner: context2.owner,
-    repo: context2.repo,
-    pull_number: context2.pullNumber,
-    per_page: 100
-  });
-  return files.map((file) => ({
-    filename: file.filename,
-    status: file.status,
-    patch: file.patch,
-    additions: file.additions,
-    deletions: file.deletions,
-    changes: file.changes
-  }));
-}
-function getPullRequestContext() {
-  const context2 = github.context;
-  if (!context2.payload.pull_request) {
-    throw new Error("This action must be run on a pull_request event.");
-  }
-  const pullRequest = context2.payload.pull_request;
-  return {
-    owner: context2.repo.owner,
-    repo: context2.repo.repo,
-    pullNumber: pullRequest.number,
-    baseSha: pullRequest.base.sha,
-    headSha: pullRequest.head.sha
-  };
-}
-
 // src/oac.ts
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
@@ -59,28 +24,38 @@ async function installOpenCode(version) {
   await exec3.exec("opencode", ["--version"]);
 }
 async function runOpenCode(workspace, agent, model, prompt, apiKey, githubToken) {
-  const args = ["run", "--auto", "--format", "json"];
-  if (model && model !== "free") {
-    args.push("--model", model);
-  }
-  args.push(`"${prompt}"`);
-  const output = "";
+  let output = "";
   const env = {
-    ...process.env
+    ...process.env,
+    GITHUB_TOKEN: githubToken,
+    USE_GITHUB_TOKEN: "true",
+    PROMPT: prompt
   };
+  if (model) {
+    env.MODEL = model;
+  }
+  if (agent) {
+    env.AGENT = agent;
+  }
   if (apiKey) {
     env.OPENAI_API_KEY = apiKey;
   }
-  core2.info(`Running OpenCode with agent "${agent}"...`);
+  core2.info(`Running OpenCode GitHub review (agent: ${agent})...`);
   const exitCode = await exec3.exec("opencode", ["github", "run"], {
     cwd: workspace,
-    env: {
-      ...process.env,
-      GITHUB_TOKEN: githubToken,
-      MODEL: "opencode/deepseek-v4-flash-free",
-      AGENT: "code-reviewer",
-      USE_GITHUB_TOKEN: "true",
-      PROMPT: prompt
+    env,
+    ignoreReturnCode: true,
+    listeners: {
+      stdout: (data) => {
+        const text = data.toString();
+        output += text;
+        core2.info(text.trimEnd());
+      },
+      stderr: (data) => {
+        const text = data.toString();
+        output += text;
+        core2.warning(text.trimEnd());
+      }
     }
   });
   return {
@@ -89,35 +64,15 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey, githubToken)
   };
 }
 
-// src/review.ts
-function buildReviewInput(files) {
-  const reviewableFiles = files.filter((file) => Boolean(file.patch)).map((file) => ({
-    filename: file.filename,
-    status: file.status,
-    patch: file.patch,
-    additions: file.additions,
-    deletions: file.deletions
-  }));
-  return {
-    files: reviewableFiles
-  };
-}
+// src/prompt.ts
 function buildReviewPrompt() {
   return `
 Review the current GitHub pull request.
 
-The repository is already checked out in the current working directory.
+Focus only on issues introduced by this PR.
 
-Use git diff, git status, git log and the repository files to understand
-the changes and their context.
+Report only actionable issues:
 
-Review ONLY issues introduced by the pull request.
-
-Do NOT modify any files.
-Do NOT create commits.
-Do NOT change the working tree.
-
-Look for:
 - correctness bugs
 - security vulnerabilities
 - regressions
@@ -127,35 +82,9 @@ Look for:
 - API compatibility problems
 - missing tests when clearly required
 
-Do NOT report:
-- formatting
-- subjective style preferences
-- naming preferences
-- unrelated pre-existing issues
-- speculative problems without evidence
+Do not report formatting, naming preferences, or unrelated pre-existing issues.
 
-Return ONLY valid JSON with exactly this structure:
-
-{
-  "summary": "short summary of the review",
-  "issues": [
-    {
-      "severity": "critical|high|medium|low",
-      "file": "path/to/file",
-      "line": 123,
-      "title": "Short issue title",
-      "body": "Detailed explanation",
-      "suggestion": "Optional suggested fix"
-    }
-  ]
-}
-
-If there are no actionable issues:
-
-{
-  "summary": "No actionable issues found.",
-  "issues": []
-}
+Do not modify files or create commits.
 `;
 }
 
@@ -177,10 +106,6 @@ async function run() {
     core3.info(`Agent: ${agent}`);
     core3.info(`Model: ${model ?? "OpenCode default"}`);
     core3.info(`API key provided: ${apiKey ? "yes" : "no"}`);
-    const files = await getPullRequestFiles(githubToken);
-    core3.info(`Changed files: ${files.length}`);
-    const reviewInput = buildReviewInput(files);
-    core3.info(`Reviewable files: ${reviewInput.files.length}`);
     await installOpenCode(opencodeVersion);
     await installOac();
     await exec5.exec("git", ["reset", "--hard", "HEAD"], { cwd: workspace });
@@ -198,9 +123,6 @@ async function run() {
     if (result.exitCode !== 0) {
       throw new Error(`OpenCode exited with code ${result.exitCode}.`);
     }
-    core3.info("OpenCode completed successfully.");
-    core3.setOutput("changed_files", files.length);
-    core3.setOutput("reviewable_files", reviewInput.files.length);
     core3.info("================================");
     core3.info("OpenCode PR Review completed successfully.");
     core3.info("The review comment was handled by OpenCode.");

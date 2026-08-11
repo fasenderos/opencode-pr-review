@@ -1,10 +1,9 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 
-import { getPullRequestFiles } from "./github";
 import { installOac } from "./oac";
 import { installOpenCode, runOpenCode } from "./opencode";
-import { buildReviewInput, buildReviewPrompt } from "./review";
+import { buildReviewPrompt } from "./prompt";
 
 async function run(): Promise<void> {
 	try {
@@ -33,23 +32,6 @@ async function run(): Promise<void> {
 		core.info(`Model: ${model ?? "OpenCode default"}`);
 
 		core.info(`API key provided: ${apiKey ? "yes" : "no"}`);
-
-		/*
-		 * Read PR files
-		 */
-		const files = await getPullRequestFiles(githubToken);
-
-		core.info(`Changed files: ${files.length}`);
-
-		/*
-		 * Build review input
-		 *
-		 * This is currently only used to determine how many
-		 * files are reviewable.
-		 */
-		const reviewInput = buildReviewInput(files);
-
-		core.info(`Reviewable files: ${reviewInput.files.length}`);
 
 		/*
 		 * Install OpenCode
@@ -93,18 +75,12 @@ async function run(): Promise<void> {
 			throw new Error(`OpenCode exited with code ${result.exitCode}.`);
 		}
 
-		core.info("OpenCode completed successfully.");
-
 		/*
-		 * 7. Action outputs
+		 * Action outputs
 		 *
 		 * The review itself is already handled by
 		 * `opencode github run`, so we don't parse it here.
 		 */
-		core.setOutput("changed_files", files.length);
-
-		core.setOutput("reviewable_files", reviewInput.files.length);
-
 		core.info("================================");
 
 		core.info("OpenCode PR Review completed successfully.");

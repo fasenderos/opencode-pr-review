@@ -44,16 +44,6 @@ inputs:
     required: false
     default: ${{ github.token }}
 
-outputs:
-  changed_files:
-    description: "Number of files changed in the pull request"
-
-  reviewable_files:
-    description: "Number of files with a reviewable patch"
-
-  review:
-    description: "Raw structured review result"
-
 runs:
   using: "node24"
   main: "dist/index.js"
