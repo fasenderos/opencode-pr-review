@@ -22,7 +22,7 @@ inputs:
     description: >
       OpenCode agent to use for the review.
     required: false
-    default: "CodeReviewer"
+    default: OpenAgent
 
   opencode_version:
     description: >
