@@ -37,7 +37,8 @@ export async function runOpenCode(
   agent: string,
   model: string | undefined,
   prompt: string,
-  apiKey: string | undefined
+  apiKey: string | undefined,
+  githubToken:  string
 ): Promise<OpenCodeRunResult> {
 
   const args = [
@@ -81,7 +82,7 @@ export async function runOpenCode(
     cwd: workspace,
     env: {
       ...process.env,
-      GITHUB_TOKEN: core.getInput("github_token", { required: true }),
+      GITHUB_TOKEN: githubToken,
 
       MODEL: "opencode/deepseek-v4-flash-free",
 
@@ -89,7 +90,7 @@ export async function runOpenCode(
 
       USE_GITHUB_TOKEN: "true",
 
-      PROMPT: "Reply with exactly: REVIEW_TEST_OK",
+      PROMPT: prompt,
     },
   }
 );

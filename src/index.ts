@@ -84,6 +84,8 @@ async function run(): Promise<void> {
 
     /*
      * 2. Build review input
+     * This is currently only used to determine how many
+     * files are reviewable.
      */
     const reviewInput =
       buildReviewInput(files);
@@ -118,8 +120,9 @@ async function run(): Promise<void> {
         workspace,
         agent,
         model,
-        "Reply with exactly: REVIEW_TEST_OK",
-        apiKey
+        prompt,
+        apiKey,
+        githubToken
       );
 
     core.info(
@@ -127,7 +130,7 @@ async function run(): Promise<void> {
     );
 
     /*
-     * 6. Parse review
+     * 6. Check OpenCode result
      */
     if (result.exitCode !== 0) {
       throw new Error(
@@ -135,37 +138,15 @@ async function run(): Promise<void> {
       );
     }
 
-    const review =
-      parseOpenCodeEvents(
-        result.output
-      );
+    core.info(
+      "OpenCode completed successfully."
+    );
 
     /*
-     * 7. Validate structured review
-     */
-    const reviewResult =
-      parseReviewOutput(review);
-
-    core.info(
-      `Issues found: ${reviewResult.issues.length}`
-    );
-
-    core.info(
-      "--- Review Summary ---"
-    );
-
-    core.info(
-      reviewResult.summary
-    );
-
-    for (const issue of reviewResult.issues) {
-      core.info(
-        `[${issue.severity}] ${issue.file}:${issue.line} - ${issue.title}`
-      );
-    }
-
-    /*
-     * 8. Action outputs
+     * 7. Action outputs
+     *
+     * The review itself is already handled by
+     * `opencode github run`, so we don't parse it here.
      */
     core.setOutput(
       "changed_files",
@@ -177,9 +158,20 @@ async function run(): Promise<void> {
       reviewInput.files.length
     );
 
-    core.setOutput(
-      "review",
-      JSON.stringify(reviewResult)
+    core.info(
+      "================================"
+    );
+
+    core.info(
+      "OpenCode PR Review completed successfully."
+    );
+
+    core.info(
+      "The review comment was handled by OpenCode."
+    );
+
+    core.info(
+      "================================"
     );
 
   } catch (error) {
