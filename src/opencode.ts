@@ -39,29 +39,6 @@ export async function runOpenCode(
   prompt: string,
   apiKey: string | undefined
 ): Promise<OpenCodeRunResult> {
-    await exec.exec(
-  "pwd",
-  [],
-  {
-    cwd: workspace,
-  }
-);
-
-await exec.exec(
-  "ls",
-  ["-la", ".opencode"],
-  {
-    cwd: workspace,
-  }
-);
-
-await exec.exec(
-  "cat",
-  [".opencode/opencode.json"],
-  {
-    cwd: workspace,
-  }
-);
 
   const args = [
   "run",
