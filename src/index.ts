@@ -33,12 +33,12 @@ async function run(): Promise<void> {
 		 * Install OpenCode
 		 */
 		await installOpenCode(opencodeVersion);
-		await configureOpenCode(workspace, model, agent);
+		// await configureOpenCode(workspace, model, agent);
 
 		/*
 		 * Install OAC reviewer
 		 */
-		await installOac();
+		// await installOac();
 
 		/*
 		 * Ensure working tree is clean
