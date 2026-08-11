@@ -214,6 +214,7 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
       cwd: workspace,
       env: {
         ...process.env,
+        GITHUB_TOKEN: core.getInput("github_token", { required: true }),
         MODEL: "opencode/deepseek-v4-flash-free",
         AGENT: "code-reviewer",
         USE_GITHUB_TOKEN: "true",

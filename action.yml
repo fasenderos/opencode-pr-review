@@ -41,7 +41,7 @@ inputs:
   github_token:
     description: >
       GitHub token used to read pull request information.
-    required: true
+    required: false
     default: ${{ github.token }}
 
 outputs:

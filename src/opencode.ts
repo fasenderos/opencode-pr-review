@@ -81,6 +81,7 @@ export async function runOpenCode(
     cwd: workspace,
     env: {
       ...process.env,
+      GITHUB_TOKEN: core.getInput("github_token", { required: true }),
 
       MODEL: "opencode/deepseek-v4-flash-free",
 
