@@ -1,20 +1,18 @@
 // src/index.ts
-import * as core2 from "@actions/core";
+import * as core3 from "@actions/core";
+import * as exec5 from "@actions/exec";
 
 // src/github.ts
 import * as github from "@actions/github";
 async function getPullRequestFiles(token) {
   const context2 = getPullRequestContext();
   const octokit = github.getOctokit(token);
-  const files = await octokit.paginate(
-    octokit.rest.pulls.listFiles,
-    {
-      owner: context2.owner,
-      repo: context2.repo,
-      pull_number: context2.pullNumber,
-      per_page: 100
-    }
-  );
+  const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+    owner: context2.owner,
+    repo: context2.repo,
+    pull_number: context2.pullNumber,
+    per_page: 100
+  });
   return files.map((file) => ({
     filename: file.filename,
     status: file.status,
@@ -27,9 +25,7 @@ async function getPullRequestFiles(token) {
 function getPullRequestContext() {
   const context2 = github.context;
   if (!context2.payload.pull_request) {
-    throw new Error(
-      "This action must be run on a pull_request event."
-    );
+    throw new Error("This action must be run on a pull_request event.");
   }
   const pullRequest = context2.payload.pull_request;
   return {
@@ -38,6 +34,58 @@ function getPullRequestContext() {
     pullNumber: pullRequest.number,
     baseSha: pullRequest.base.sha,
     headSha: pullRequest.head.sha
+  };
+}
+
+// src/oac.ts
+import * as core from "@actions/core";
+import * as exec from "@actions/exec";
+async function installOac() {
+  core.info("Installing OpenAgentsControl...");
+  await exec.exec("bash", [
+    "-c",
+    "curl -fsSL https://raw.githubusercontent.com/darrenhinde/OpenAgentsControl/main/install.sh | bash -s developer"
+  ]);
+  core.info("OpenAgentsControl installation completed.");
+}
+
+// src/opencode.ts
+import * as core2 from "@actions/core";
+import * as exec3 from "@actions/exec";
+async function installOpenCode(version) {
+  const packageSpec = version === "latest" ? "opencode-ai@latest" : `opencode-ai@${version}`;
+  core2.info(`Installing OpenCode: ${packageSpec}`);
+  await exec3.exec("npm", ["install", "--global", packageSpec]);
+  await exec3.exec("opencode", ["--version"]);
+}
+async function runOpenCode(workspace, agent, model, prompt, apiKey, githubToken) {
+  const args = ["run", "--auto", "--format", "json"];
+  if (model && model !== "free") {
+    args.push("--model", model);
+  }
+  args.push(`"${prompt}"`);
+  const output = "";
+  const env = {
+    ...process.env
+  };
+  if (apiKey) {
+    env.OPENAI_API_KEY = apiKey;
+  }
+  core2.info(`Running OpenCode with agent "${agent}"...`);
+  const exitCode = await exec3.exec("opencode", ["github", "run"], {
+    cwd: workspace,
+    env: {
+      ...process.env,
+      GITHUB_TOKEN: githubToken,
+      MODEL: "opencode/deepseek-v4-flash-free",
+      AGENT: "code-reviewer",
+      USE_GITHUB_TOKEN: "true",
+      PROMPT: prompt
+    }
+  });
+  return {
+    exitCode,
+    output
   };
 }
 
@@ -110,246 +158,59 @@ If there are no actionable issues:
 }
 `;
 }
-function parseReviewOutput(output) {
-  const json = extractJson(output);
-  if (!json) {
-    throw new Error(
-      "OpenCode did not return a valid JSON review."
-    );
-  }
-  const parsed = JSON.parse(json);
-  if (!isReviewResult(parsed)) {
-    throw new Error(
-      "OpenCode returned JSON, but it does not match the expected review format."
-    );
-  }
-  return parsed;
-}
-function extractJson(output) {
-  const trimmed = output.trim();
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-    return trimmed;
-  }
-  const fenced = trimmed.match(
-    /```(?:json)?\s*([\s\S]*?)\s*```/
-  );
-  if (fenced?.[1]) {
-    return fenced[1].trim();
-  }
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1);
-  }
-  return null;
-}
-function isReviewResult(value) {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const candidate = value;
-  if (typeof candidate.summary !== "string") {
-    return false;
-  }
-  if (!Array.isArray(candidate.issues)) {
-    return false;
-  }
-  return candidate.issues.every(isReviewIssue);
-}
-function isReviewIssue(value) {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const issue = value;
-  return typeof issue.severity === "string" && ["critical", "high", "medium", "low"].includes(
-    issue.severity
-  ) && typeof issue.file === "string" && typeof issue.line === "number" && typeof issue.title === "string" && typeof issue.body === "string";
-}
-
-// src/opencode.ts
-import * as core from "@actions/core";
-import * as exec from "@actions/exec";
-async function installOpenCode(version) {
-  const packageSpec = version === "latest" ? "opencode-ai@latest" : `opencode-ai@${version}`;
-  core.info(
-    `Installing OpenCode: ${packageSpec}`
-  );
-  await exec.exec(
-    "npm",
-    [
-      "install",
-      "--global",
-      packageSpec
-    ]
-  );
-  await exec.exec("opencode", [
-    "--version"
-  ]);
-}
-async function runOpenCode(workspace, agent, model, prompt, apiKey) {
-  const args = [
-    "run",
-    "--auto",
-    "--format",
-    "json"
-  ];
-  if (model && model !== "free") {
-    args.push("--model", model);
-  }
-  args.push(`"${prompt}"`);
-  let output = "";
-  const env = {
-    ...process.env
-  };
-  if (apiKey) {
-    env.OPENAI_API_KEY = apiKey;
-  }
-  core.info(
-    `Running OpenCode with agent "${agent}"...`
-  );
-  const exitCode = await exec.exec(
-    "opencode",
-    ["github", "run"],
-    {
-      cwd: workspace,
-      env: {
-        ...process.env,
-        GITHUB_TOKEN: core.getInput("github_token", { required: true }),
-        MODEL: "opencode/deepseek-v4-flash-free",
-        AGENT: "code-reviewer",
-        USE_GITHUB_TOKEN: "true",
-        PROMPT: "Reply with exactly: REVIEW_TEST_OK"
-      }
-    }
-  );
-  return {
-    exitCode,
-    output
-  };
-}
 
 // src/index.ts
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE;
     if (!workspace) {
-      throw new Error(
-        "GITHUB_WORKSPACE is not available."
-      );
+      throw new Error("GITHUB_WORKSPACE is not available.");
     }
-    const githubToken = core2.getInput(
-      "github_token",
-      { required: true }
-    );
-    const model = core2.getInput("model") || void 0;
-    const apiKey = core2.getInput("api_key") || void 0;
-    const agent = core2.getInput("agent") || "code-reviewer";
-    const opencodeVersion = core2.getInput("opencode_version") || "latest";
-    const oacRef = core2.getInput("oac_ref") || "main";
-    core2.info("================================");
-    core2.info("OpenCode PR Review");
-    core2.info("================================");
-    core2.info(
-      `Agent: ${agent}`
-    );
-    core2.info(
-      `Model: ${model ?? "OpenCode default"}`
-    );
-    core2.info(
-      `API key provided: ${apiKey ? "yes" : "no"}`
-    );
-    const files = await getPullRequestFiles(
-      githubToken
-    );
-    core2.info(
-      `Changed files: ${files.length}`
-    );
+    const githubToken = core3.getInput("github_token", { required: true });
+    const model = core3.getInput("model") || void 0;
+    const apiKey = core3.getInput("api_key") || void 0;
+    const agent = core3.getInput("agent") || "code-reviewer";
+    const opencodeVersion = core3.getInput("opencode_version") || "latest";
+    core3.info("================================");
+    core3.info("OpenCode PR Review");
+    core3.info("================================");
+    core3.info(`Agent: ${agent}`);
+    core3.info(`Model: ${model ?? "OpenCode default"}`);
+    core3.info(`API key provided: ${apiKey ? "yes" : "no"}`);
+    const files = await getPullRequestFiles(githubToken);
+    core3.info(`Changed files: ${files.length}`);
     const reviewInput = buildReviewInput(files);
-    core2.info(
-      `Reviewable files: ${reviewInput.files.length}`
-    );
-    await installOpenCode(
-      opencodeVersion
-    );
+    core3.info(`Reviewable files: ${reviewInput.files.length}`);
+    await installOpenCode(opencodeVersion);
+    await installOac();
+    await exec5.exec("git", ["reset", "--hard", "HEAD"], { cwd: workspace });
+    await exec5.exec("git", ["clean", "-fd"], { cwd: workspace });
     const prompt = buildReviewPrompt();
     const result = await runOpenCode(
       workspace,
       agent,
       model,
-      "Reply with exactly: REVIEW_TEST_OK",
-      apiKey
+      prompt,
+      apiKey,
+      githubToken
     );
-    core2.info(
-      `OpenCode exit code: ${result.exitCode}`
-    );
+    core3.info(`OpenCode exit code: ${result.exitCode}`);
     if (result.exitCode !== 0) {
-      throw new Error(
-        `OpenCode exited with code ${result.exitCode}.`
-      );
+      throw new Error(`OpenCode exited with code ${result.exitCode}.`);
     }
-    const review = parseOpenCodeEvents(
-      result.output
-    );
-    const reviewResult = parseReviewOutput(review);
-    core2.info(
-      `Issues found: ${reviewResult.issues.length}`
-    );
-    core2.info(
-      "--- Review Summary ---"
-    );
-    core2.info(
-      reviewResult.summary
-    );
-    for (const issue of reviewResult.issues) {
-      core2.info(
-        `[${issue.severity}] ${issue.file}:${issue.line} - ${issue.title}`
-      );
-    }
-    core2.setOutput(
-      "changed_files",
-      files.length
-    );
-    core2.setOutput(
-      "reviewable_files",
-      reviewInput.files.length
-    );
-    core2.setOutput(
-      "review",
-      JSON.stringify(reviewResult)
-    );
+    core3.info("OpenCode completed successfully.");
+    core3.setOutput("changed_files", files.length);
+    core3.setOutput("reviewable_files", reviewInput.files.length);
+    core3.info("================================");
+    core3.info("OpenCode PR Review completed successfully.");
+    core3.info("The review comment was handled by OpenCode.");
+    core3.info("================================");
   } catch (error) {
     if (error instanceof Error) {
-      core2.setFailed(error.message);
+      core3.setFailed(error.message);
     } else {
-      core2.setFailed(
-        "Unknown error."
-      );
+      core3.setFailed("Unknown error.");
     }
   }
-}
-function parseOpenCodeEvents(output) {
-  const lines = output.split("\n").map((line) => line.trim()).filter(Boolean);
-  const assistantTexts = [];
-  for (const line of lines) {
-    try {
-      const event = JSON.parse(line);
-      const part = event.part;
-      if (event.type === "text" && typeof event.text === "string") {
-        assistantTexts.push(
-          event.text
-        );
-      }
-      if (part && part.type === "text" && typeof part.text === "string") {
-        assistantTexts.push(
-          part.text
-        );
-      }
-    } catch {
-    }
-  }
-  if (assistantTexts.length > 0) {
-    return assistantTexts.join("\n");
-  }
-  return output;
 }
 run();

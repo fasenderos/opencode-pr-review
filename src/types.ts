@@ -18,7 +18,7 @@ export interface PullRequestContext {
 export interface ReviewFile {
 	filename: string;
 	status: string;
-	patch: string;
+	patch?: string;
 	additions: number;
 	deletions: number;
 }

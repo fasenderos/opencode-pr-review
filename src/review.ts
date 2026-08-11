@@ -11,7 +11,7 @@ export function buildReviewInput(files: PullRequestFile[]): ReviewInput {
 		.map((file) => ({
 			filename: file.filename,
 			status: file.status,
-			patch: file.patch!,
+			patch: file.patch,
 			additions: file.additions,
 			deletions: file.deletions,
 		}));
