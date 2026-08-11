@@ -5,7 +5,7 @@ async function run() {
   try {
     const model = core.getInput("model") || "free";
     const apiKey = core.getInput("api_key");
-
+    console.log('TEST')
     core.info(`Model: ${model}`);
     core.info(`API key provided: ${apiKey ? "yes" : "no"}`);
 
