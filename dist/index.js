@@ -193,9 +193,7 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
     "--agent",
     agent,
     "--format",
-    "json",
-    "--dir",
-    workspace
+    "json"
   ];
   if (model) {
     args.push("--model", model);

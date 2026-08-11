@@ -46,8 +46,6 @@ export async function runOpenCode(
     agent,
     "--format",
     "json",
-    "--dir",
-    workspace,
   ];
 
   if (model) {
