@@ -54,7 +54,7 @@ export async function runOpenCode(
     args.push("--model", model);
   }
 
-  args.push("--prompt", prompt);
+  args.push(`"${prompt}"`);
 
   let output = "";
 

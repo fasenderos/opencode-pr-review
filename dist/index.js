@@ -200,7 +200,7 @@ async function runOpenCode(workspace, agent, model, prompt, apiKey) {
   if (model) {
     args.push("--model", model);
   }
-  args.push("--prompt", prompt);
+  args.push(`"${prompt}"`);
   let output = "";
   const env = {
     ...process.env
