@@ -1,22 +1,27 @@
 {
-  "name": "opencode-pr-review",
-  "version": "1.0.0",
-  "description": "Action to review pull requests using OpenCode",
-  "author": "Andrea Fassina <fasenderos@gmail.com>",
-  "license": "MIT",
-  "type": "module",
-  "scripts": {
-    "build": "tsup src/index.ts --format esm --target node24 --out-dir dist --clean",
-    "dev": "tsup src/index.ts --watch --format esm --target node24 --out-dir dist"
-  },
-  "keywords": [],
-  "dependencies": {
-    "@actions/core": "^3.0.1",
-    "@actions/github": "^9.1.1"
-  },
-  "devDependencies": {
-    "@types/node": "^26.2.0",
-    "tsup": "^8.5.1",
-    "typescript": "^7.0.2"
-  }
+	"name": "opencode-pr-review",
+	"version": "0.1.0",
+	"description": "AI-powered GitHub pull request reviews using OpenCode and OpenAgentsControl",
+	"author": "Andrea Fassina <fasenderos@gmail.com>",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --target node24 --out-dir dist --clean",
+		"dev": "tsup src/index.ts --watch --format esm --target node24 --out-dir dist",
+		"format": "npx @biomejs/biome format --write",
+		"lint": "npx @biomejs/biome lint --write",
+		"check": "npx @biomejs/biome check --write"
+	},
+	"keywords": [],
+	"dependencies": {
+		"@actions/core": "^3.0.1",
+		"@actions/exec": "^3.0.0",
+		"@actions/github": "^9.1.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.8",
+		"@types/node": "^26.2.0",
+		"tsup": "^8.5.1",
+		"typescript": "^7.0.2"
+	}
 }

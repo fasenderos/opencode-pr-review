@@ -1,19 +1,46 @@
 name: "OpenCode PR Review"
-description: "Review pull requests using OpenCode"
-author: "Your Name"
+description: >
+  AI-powered GitHub pull request review using OpenCode
+  and OpenAgentsControl.
+author: "fasenderos"
 
 inputs:
   model:
-    description: "Model to use for the review"
+    description: >
+      OpenCode model in provider/model format.
+      If omitted, OpenCode uses its configured default model.
     required: false
-    default: "free"
+    default: "opencode/deepseek-v4-flash-free"
 
   api_key:
-    description: "API key for private model providers"
+    description: >
+      API key for the configured model provider.
+      Prefer passing this through GitHub Secrets.
     required: false
 
+  agent:
+    description: >
+      OpenCode agent to use for the review.
+    required: false
+    default: OpenAgent
+
+  opencode_version:
+    description: >
+      OpenCode npm package version.
+      Use "latest" or a pinned version.
+    required: false
+    default: "latest"
+
+  oac_ref:
+    description: >
+      Git reference of OpenAgentsControl to use.
+      This can be a tag, branch, or commit SHA.
+    required: false
+    default: "main"
+
   github_token:
-    description: "GitHub token used to publish the review"
+    description: >
+      GitHub token used to read pull request information.
     required: false
     default: ${{ github.token }}
 
