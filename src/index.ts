@@ -14,14 +14,10 @@ async function run(): Promise<void> {
 		}
 
 		const githubToken = core.getInput("github_token", { required: true });
-
-		const model = core.getInput("model") || undefined;
-
+		const model = core.getInput("model");
 		const apiKey = core.getInput("api_key") || undefined;
-
-		const agent = core.getInput("agent") || "code-reviewer";
-
-		const opencodeVersion = core.getInput("opencode_version") || "latest";
+		const agent = core.getInput("agent");
+		const opencodeVersion = core.getInput("opencode_version");
 
 		core.info("================================");
 		core.info("OpenCode PR Review");
