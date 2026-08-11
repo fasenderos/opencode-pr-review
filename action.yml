@@ -2,7 +2,6 @@ name: "OpenCode PR Review"
 description: >
   AI-powered GitHub pull request review using OpenCode
   and OpenAgentsControl.
-
 author: "fasenderos"
 
 inputs:
@@ -11,6 +10,7 @@ inputs:
       OpenCode model in provider/model format.
       If omitted, OpenCode uses its configured default model.
     required: false
+    default: "opencode/deepseek-v4-flash-free"
 
   api_key:
     description: >
