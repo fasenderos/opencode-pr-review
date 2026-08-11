@@ -31,6 +31,6 @@ jobs:
         uses: ./
         with:
           github_token: ${{ github.token }}
-          agent: code-reviewer
+          agent: CodeReviewer
           opencode_version: latest
           oac_ref: main
