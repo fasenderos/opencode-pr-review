@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 
 import { installOac } from "./oac";
-import { installOpenCode, runOpenCode } from "./opencode";
+import { configureOpenCode, installOpenCode, runOpenCode } from "./opencode";
 import { buildReviewPrompt } from "./prompt";
 
 async function run(): Promise<void> {
@@ -33,6 +33,7 @@ async function run(): Promise<void> {
 		 * Install OpenCode
 		 */
 		await installOpenCode(opencodeVersion);
+		await configureOpenCode(workspace, model, agent);
 
 		/*
 		 * Install OAC reviewer

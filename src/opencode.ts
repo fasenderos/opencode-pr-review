@@ -1,3 +1,5 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 
@@ -15,6 +17,32 @@ export async function installOpenCode(version: string): Promise<void> {
 	await exec.exec("npm", ["install", "--global", packageSpec]);
 
 	await exec.exec("opencode", ["--version"]);
+}
+
+export async function configureOpenCode(
+	workspace: string,
+	model: string | undefined,
+	agent: string,
+): Promise<void> {
+	const configFile = join(workspace, "opencode.jsonc");
+
+	const config: Record<string, unknown> = {
+		$schema: "https://opencode.ai/config.json",
+		default_agent: agent,
+	};
+
+	if (model) {
+		config.model = model;
+	}
+
+	await writeFile(configFile, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+
+	core.info(`OpenCode configuration written to ${configFile}`);
+	core.info(`Default agent: ${agent}`);
+
+	if (model && model !== "free") {
+		core.info(`Default model: ${model}`);
+	}
 }
 
 export async function runOpenCode(
