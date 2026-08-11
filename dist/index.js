@@ -54,6 +54,62 @@ function buildReviewInput(files) {
     files: reviewableFiles
   };
 }
+function buildReviewPrompt() {
+  return `
+Review the current GitHub pull request.
+
+The repository is already checked out in the current working directory.
+
+Use git diff, git status, git log and the repository files to understand
+the changes and their context.
+
+Review ONLY issues introduced by the pull request.
+
+Do NOT modify any files.
+Do NOT create commits.
+Do NOT change the working tree.
+
+Look for:
+- correctness bugs
+- security vulnerabilities
+- regressions
+- broken edge cases
+- incorrect error handling
+- performance problems
+- API compatibility problems
+- missing tests when clearly required
+
+Do NOT report:
+- formatting
+- subjective style preferences
+- naming preferences
+- unrelated pre-existing issues
+- speculative problems without evidence
+
+Return ONLY valid JSON with exactly this structure:
+
+{
+  "summary": "short summary of the review",
+  "issues": [
+    {
+      "severity": "critical|high|medium|low",
+      "file": "path/to/file",
+      "line": 123,
+      "title": "Short issue title",
+      "body": "Detailed explanation",
+      "suggestion": "Optional suggested fix"
+    }
+  ]
+}
+
+If there are no actionable issues:
+
+{
+  "summary": "No actionable issues found.",
+  "issues": []
+}
+`;
+}
 function parseReviewOutput(output) {
   const json = extractJson(output);
   if (!json) {
@@ -130,10 +186,10 @@ async function installOpenCode(version) {
     "--version"
   ]);
 }
-async function runOpenCode(workspace, agent, model, apiKey) {
-  const prompt = buildReviewPrompt();
+async function runOpenCode(workspace, agent, model, prompt, apiKey) {
   const args = [
     "run",
+    "--auto",
     "--agent",
     agent,
     "--format",
@@ -163,10 +219,12 @@ async function runOpenCode(workspace, agent, model, apiKey) {
       ignoreReturnCode: true,
       listeners: {
         stdout: (data) => {
-          output += data.toString();
+          const text = data.toString();
+          output += text;
+          core.info(text.trimEnd());
         },
         stderr: (data) => {
-          core.debug(data.toString());
+          core.warning(data.toString().trimEnd());
         }
       }
     }
@@ -175,62 +233,6 @@ async function runOpenCode(workspace, agent, model, apiKey) {
     exitCode,
     output
   };
-}
-function buildReviewPrompt() {
-  return `
-Review the current GitHub pull request.
-
-The repository is already checked out in the current working directory.
-
-Use git diff, git status, git log and the repository files to understand
-the changes and their context.
-
-Review ONLY issues introduced by the pull request.
-
-Do NOT modify any files.
-Do NOT create commits.
-Do NOT change the working tree.
-
-Look for:
-- correctness bugs
-- security vulnerabilities
-- regressions
-- broken edge cases
-- incorrect error handling
-- performance problems
-- API compatibility problems
-- missing tests when clearly required
-
-Do NOT report:
-- formatting
-- subjective style preferences
-- naming preferences
-- unrelated pre-existing issues
-- speculative problems without evidence
-
-Return ONLY valid JSON with exactly this structure:
-
-{
-  "summary": "short summary of the review",
-  "issues": [
-    {
-      "severity": "critical|high|medium|low",
-      "file": "path/to/file",
-      "line": 123,
-      "title": "Short issue title",
-      "body": "Detailed explanation",
-      "suggestion": "Optional suggested fix"
-    }
-  ]
-}
-
-If there are no actionable issues:
-
-{
-  "summary": "No actionable issues found.",
-  "issues": []
-}
-`;
 }
 
 // src/oac.ts
@@ -360,10 +362,12 @@ async function run() {
       oacRef,
       workspace
     );
+    const prompt = buildReviewPrompt();
     const result = await runOpenCode(
       workspace,
       agent,
       model,
+      "Reply with exactly: REVIEW_TEST_OK",
       apiKey
     );
     core3.info(

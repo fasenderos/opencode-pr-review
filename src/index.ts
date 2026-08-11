@@ -6,6 +6,7 @@ import {
 
 import {
   buildReviewInput,
+  buildReviewPrompt,
   parseReviewOutput,
 } from "./review";
 
@@ -108,11 +109,13 @@ async function run(): Promise<void> {
     /*
      * 5. Run OpenCode
      */
+    const prompt = buildReviewPrompt();
     const result =
       await runOpenCode(
         workspace,
         agent,
         model,
+        "Reply with exactly: REVIEW_TEST_OK",
         apiKey
       );
 
