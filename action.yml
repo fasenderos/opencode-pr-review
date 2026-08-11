@@ -19,7 +19,10 @@ inputs:
 
 outputs:
   changed_files:
-    description: "Number of changed files analyzed"
+    description: "Number of files changed in the pull request"
+
+  reviewable_files:
+    description: "Number of files that can be analyzed"
 
 runs:
   using: "node24"
